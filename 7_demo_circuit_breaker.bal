@@ -19,36 +19,31 @@ twitter:Client tw = new({
         clientConfig: {}
     });
 
-@http:ServiceConfig {
-    basePath: "/"
-}
+@http:ServiceConfig { basePath: "/" }
 service hello on new http:Listener(9090) {
+
     @http:ResourceConfig {
         path: "/",
         methods: ["POST"]
     }
     resource function hi (http:Caller caller, http:Request request) {
-        http:Response res = new;
 
-        var v = homer->get("/quotes");
-        if (v is http:Response) {
-            var jsonPay = checkpanic v.getJsonPayload();
-            string payload = jsonPay[0].quote.toString();
-            if (!payload.contains("#ballerina")){
-                payload=payload+" #ballerina #RLV";
-            }
+        var quote = homer->get("/quote");
+        json resp;
+        if (quote is http:Response) {
+            var payload = checkpanic quote.getTextPayload();
+            payload = payload + " #ballerina";
+
             var st = checkpanic tw->tweet(payload);
-            json myJson = {
+            resp = {
                 text: payload,
                 id: st.id,
                 agent: "ballerina"
             };
-            res.setPayload(untaint myJson);
         } else {
-            res.setPayload("Circuit is open. Invoking default behavior.\n");
+            resp = "Circuit is open. Invoking default behavior.\n";
         }
 
-        checkpanic caller->respond(res);
-        return;
+        checkpanic caller->respond(untaint resp);
     }
 }
