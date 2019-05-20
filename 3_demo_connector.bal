@@ -1,26 +1,7 @@
-// Add twitter connector: import, create endpoint,
-// create a new resource that invoke it
-// To find it:
-// ballerina search twitter
-// To get it for tab completion:
-// ballerina pull wso2/twitter
-// To run it:
-// ballerina run --config twitter.toml demo.bal
-// To invoke:
-// curl -X POST -d "Demo" localhost:9090
-
-// this package helps read config files
 import ballerina/config;
 import ballerina/http;
-// Pull and use wso2/twitter connector from http://central.ballerina.io
-// It has the objects and APIs to make working with Twitter easy
 import wso2/twitter;
 
-// Twitter package defines this type of endpoint
-// that incorporates the twitter API.
-// We need to initialize it with OAuth data from apps.twitter.com.
-// Instead of providing this confidential data in the code
-// we read it from a toml file.
 twitter:Client tw = new({
     clientId: config:getAsString("clientId"),
     clientSecret: config:getAsString("clientSecret"),
@@ -37,14 +18,12 @@ service hello on new http:Listener(9090) {
         path: "/",
         methods: ["POST"]
     }
-    resource function hi (http:Caller caller, http:Request request) returns error? {
+    resource function hi (http:Caller caller, http:Request request) {
         http:Response res = new;
-        string payload = check request.getTextPayload();
-        // Use the twitter connector to do the tweet
-        twitter:Status st = check tw->tweet(payload);
-        // Change the response back
+        string payload = checkpanic request.getTextPayload();
+        twitter:Status st = checkpanic tw->tweet(payload);
         res.setPayload("Tweeted: " + untaint st.text + "\n");
-        _ = check caller->respond(res);
+        checkpanic caller->respond(res);
         return;
     }
 }

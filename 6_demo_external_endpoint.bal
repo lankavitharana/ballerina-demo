@@ -1,17 +1,8 @@
-// Add another external web service endpoint
-// to compensate for slowness use circuit breaker
-
-// To run it:
-// ballerina run --config twitter.toml demo.bal
-// To invoke:
-// curl -X POST localhost:9090
-// Invoke a few times to show that it is often slow
-
 import ballerina/config;
 import ballerina/http;
 import wso2/twitter;
 
-http:Client homer = new("http://www.simpsonquotes.xyz");
+http:Client homer = new("https://thesimpsonsquoteapi.glitch.me");
 
 twitter:Client tw = new({
   clientId: config:getAsString("clientId"),
@@ -29,25 +20,24 @@ service hello on new http:Listener(9090) {
       path: "/",
       methods: ["POST"]
     }
-    resource function hi (http:Caller caller, http:Request request) returns error? {
+    resource function hi (http:Caller caller, http:Request request) {
 
-        var hResp = check homer->get("/quote");
-        var status = check hResp.getTextPayload();
-        if (!status.contains("#ballerina")) {
-            status = status + " #ballerina";
-        }
+        var hResp = checkpanic homer->get("/quotes");
+        var jsonPay = checkpanic hResp.getJsonPayload();
+        string payload = jsonPay[0].quote.toString();
+        if (!payload.contains("#ballerina")){ payload = payload+" #ballerina #RLV"; }
 
-        var st = check tw->tweet(status);
+        var st = checkpanic tw->tweet(payload);
 
         json myJson = {
-            text: status,
+            text: payload,
             id: st.id,
             agent: "ballerina"
         };
         http:Response res = new;
         res.setPayload(untaint myJson);
 
-        _ = check caller->respond(res);
+        checkpanic caller->respond(res);
         return;
     }
 }

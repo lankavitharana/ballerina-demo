@@ -1,15 +1,8 @@
-// To compensate for slowness use circuit breaker
-// To run it:
-// ballerina run --config twitter.toml demo_circuitbreaker.bal
-// To invoke:
-// curl -X POST localhost:9090
-// Invoke many times to show how circuit breaker works
-
 import ballerina/config;
 import ballerina/http;
 import wso2/twitter;
 
-http:Client homer = new("http://www.simpsonquotes.xyz", config={
+http:Client homer = new("https://thesimpsonsquoteapi.glitch.me", config={
         circuitBreaker: {
             failureThreshold: 0.0,
             resetTimeMillis: 3000,
@@ -34,16 +27,17 @@ service hello on new http:Listener(9090) {
         path: "/",
         methods: ["POST"]
     }
-    resource function hi (http:Caller caller, http:Request request) returns error? {
+    resource function hi (http:Caller caller, http:Request request) {
         http:Response res = new;
 
-        var v = homer->get("/quote");
+        var v = homer->get("/quotes");
         if (v is http:Response) {
-            var payload = check v.getTextPayload();
+            var jsonPay = checkpanic v.getJsonPayload();
+            string payload = jsonPay[0].quote.toString();
             if (!payload.contains("#ballerina")){
-                payload=payload+" #ballerina";
+                payload=payload+" #ballerina #RLV";
             }
-            var st = check tw->tweet(payload);
+            var st = checkpanic tw->tweet(payload);
             json myJson = {
                 text: payload,
                 id: st.id,
@@ -54,7 +48,7 @@ service hello on new http:Listener(9090) {
             res.setPayload("Circuit is open. Invoking default behavior.\n");
         }
 
-        _ = check caller->respond(res);
+        checkpanic caller->respond(res);
         return;
     }
 }

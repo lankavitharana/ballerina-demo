@@ -30,7 +30,7 @@ service tweetCleaner on new http:Listener(9090) {
         methods: ["GET"],
         path: "/{account}/{days}"
     }  
-    resource function list (http:Caller caller, http:Request request, string account, int days) {
+    resource function list (http:Caller caller, http:Request request, string account, int days) returns error? {
         http:Response res = new;
         twitter:Status[] tws = getTweets(account, days);
         json[] tweets = [];
@@ -43,7 +43,7 @@ service tweetCleaner on new http:Listener(9090) {
         }
         json out = { tweets : tweets };
         res.setJsonPayload(untaint out, contentType = "application/json");
-        _ = caller->respond(res);
+        _ = check caller->respond(res);
     }
 
     @http:ResourceConfig {
@@ -59,18 +59,18 @@ service tweetCleaner on new http:Listener(9090) {
                         id: tw.id,
                         text: tw.text};
             tweets[tweets.length()] = t;
-            _ = twc->destroyStatus(untaint tw.id);
+            _ = checkpanic twc->destroyStatus(untaint tw.id);
             io:println(tw.createdAt + ": " + tw.id);
         }
         json out = { deleted : tweets };
         res.setJsonPayload(untaint out, contentType = "application/json");
-        _ = caller->respond(res);
+        _ = checkpanic caller->respond(res);
     }
 }
 
 function getTweets(string account, int days) returns twitter:Status[] {
     string searchStr = "";
-    searchStr = "from:" + account + " since:" + time:currentTime().subtractDuration(0, 0, days, 0, 0, 0, 0).format("yyyy-MM-dd");
+    searchStr = "from:" + account + " since:" + checkpanic time:format(time:subtractDuration(time:currentTime(), 0, 0, days, 0, 0, 0, 0), "yyyy-MM-dd");
     io:println(searchStr);
     var v = twc->search(searchStr, {});
     twitter:Status[] out = [];

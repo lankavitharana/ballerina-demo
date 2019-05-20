@@ -1,21 +1,6 @@
-// Add kubernetes package and annotations
-// To build kubernetes artifacts:
-// ballerina build demo.bal
-// To run it:
-// kubectl apply -f kubernetes/
-// To see the pod:
-// kubectl get pods
-// To see the service:
-// kubectl get svc
-// To invoke:
-// curl -X POST -d "Hello from K8S" localhost:<put the port that you get from kubectl get svc>
-// To clean up:
-// kubectl delete -f kubernetes/
-
 import ballerina/config;
 import ballerina/http;
 import wso2/twitter;
-// Add kubernetes package
 import ballerinax/kubernetes;
 
 twitter:Client tw = new({
@@ -26,24 +11,23 @@ twitter:Client tw = new({
     clientConfig:{}
 });
 
-// Now instead of inline {port:9090} bind we create a separate endpoint.
-// We need this so we can add Kubernetes notation to it and tell the compiler
-// to generate a Kubernetes services (expose it to the outside world).
 @kubernetes:Service {
     serviceType: "NodePort",
     name: "ballerina-demo"
 }
 listener http:Listener cmdListener = new(9090);
 
-// Instruct the compiler to generate Kubernetes deployment artifacts
-// and a docker image out of this Ballerina service.
+
+http:Client homer = new("https://thesimpsonsquoteapi.glitch.me");
+
 @kubernetes:Deployment {
     image: "demo/ballerina-demo",
-    name: "ballerina-demo"
+    name: "ballerina-demo",
+    dockerHost: "tcp://192.168.99.100:2376",
+    dockerCertPath: "/home/rajith/.minikube/certs"
 }
-// Pass our config file into the image.
 @kubernetes:ConfigMap{
-    ballerinaConf: "twitter.toml"
+    conf: "twitter.toml"
 }
 @http:ServiceConfig {
     basePath: "/"
@@ -53,12 +37,16 @@ service hello on cmdListener {
         path: "/",
         methods: ["POST"]
     }
-    resource function hi (http:Caller caller, http:Request request) returns error? {
-        string payload = check request.getTextPayload();
+    resource function hi (http:Caller caller, http:Request request) {
+        var custMsg = trap request.getTextPayload();
 
-        if (!payload.contains("#ballerina")){payload=payload+" #ballerina";}
+        var hResp = checkpanic homer->get("/quotes");
+        var jsonPay = checkpanic hResp.getJsonPayload();
+        string payload = jsonPay[0].quote.toString();        
+        if (custMsg is string) { payload = payload + " " + custMsg; }
+        if (!payload.contains("#ballerina")){ payload = payload + " #ballerina #RLV"; }
 
-        twitter:Status st = check tw->tweet(payload);
+        twitter:Status st = checkpanic tw->tweet(payload);
 
         json myJson = {
             text: payload,
@@ -68,7 +56,7 @@ service hello on cmdListener {
         http:Response res = new;
         res.setPayload(untaint myJson);
 
-        _ = check caller->respond(res);
+        checkpanic caller->respond(res);
         return;
     }
 }
