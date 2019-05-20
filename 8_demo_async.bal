@@ -1,6 +1,7 @@
 import ballerina/config;
 import ballerina/http;
 import wso2/twitter;
+import ballerina/io;
 
 twitter:Client tw = new({
         clientId: config:getAsString("clientId"),
@@ -33,6 +34,8 @@ function doTweet() returns error? {
     var jsonPay = check hResp.getJsonPayload();
     string payload = jsonPay[0].quote.toString();
     if (!payload.contains("#ballerina")){ payload = payload+" #ballerina #RLV"; }
-    _ = check tw->tweet(payload);
+
+    twitter:Status st = check  tw->tweet(payload);
+    io:println("Tweeted: " + untaint st.text);
     return;
 }
