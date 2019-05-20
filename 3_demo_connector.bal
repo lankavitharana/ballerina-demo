@@ -14,16 +14,14 @@ twitter:Client tw = new({
     basePath: "/"
 }
 service hello on new http:Listener(9090) {
+
     @http:ResourceConfig {
         path: "/",
         methods: ["POST"]
     }
     resource function hi (http:Caller caller, http:Request request) {
-        http:Response res = new;
         string payload = checkpanic request.getTextPayload();
         twitter:Status st = checkpanic tw->tweet(payload);
-        res.setPayload("Tweeted: " + untaint st.text + "\n");
-        checkpanic caller->respond(res);
-        return;
+        checkpanic caller->respond("Tweeted: " + untaint st.text);
     }
 }

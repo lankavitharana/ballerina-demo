@@ -26,37 +26,34 @@ http:Client homer = new("https://thesimpsonsquoteapi.glitch.me");
     dockerHost: "tcp://192.168.99.100:2376",
     dockerCertPath: "/home/rajith/.minikube/certs"
 }
-@kubernetes:ConfigMap{
-    conf: "twitter.toml"
-}
-@http:ServiceConfig {
-    basePath: "/"
-}
+@kubernetes:ConfigMap{ conf: "twitter.toml" }
+@http:ServiceConfig { basePath: "/" }
 service hello on cmdListener {
+
     @http:ResourceConfig {
-        path: "/",
+        path: "/", 
         methods: ["POST"]
     }
     resource function hi (http:Caller caller, http:Request request) {
-        var custMsg = trap request.getTextPayload();
-
         var hResp = checkpanic homer->get("/quotes");
         var jsonPay = checkpanic hResp.getJsonPayload();
-        string payload = jsonPay[0].quote.toString();        
-        if (custMsg is string) { payload = payload + " " + custMsg; }
-        if (!payload.contains("#ballerina")){ payload = payload + " #ballerina #RLV"; }
+
+        string payload = jsonPay[0].quote.toString();
+        payload = payload + " #ballerina";
+
+        var custMsg = trap request.getTextPayload();
+        if (custMsg is string) {
+            payload = payload + " " + custMsg;
+        }
 
         twitter:Status st = checkpanic tw->tweet(payload);
-
-        json myJson = {
+        json respJson = {
             text: payload,
             id: st.id,
             agent: "ballerina"
         };
-        http:Response res = new;
-        res.setPayload(untaint myJson);
 
-        checkpanic caller->respond(res);
+        checkpanic caller->respond(untaint respJson);
         return;
     }
 }
