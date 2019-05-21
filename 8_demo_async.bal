@@ -33,7 +33,7 @@ function doTweet() returns error? {
     var hResp = check homer->get("/quotes");
     var jsonPay = check hResp.getJsonPayload();
     string payload = jsonPay[0].quote.toString();
-    if (!payload.contains("#ballerina")){ payload = payload+" #ballerina #RLV"; }
+    payload = payload+" #ballerina";
 
     twitter:Status st = check  tw->tweet(payload);
     io:println("Tweeted: " + untaint st.text);
