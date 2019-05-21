@@ -39,12 +39,13 @@ service hello on cmdListener {
         var jsonPay = checkpanic hResp.getJsonPayload();
 
         string payload = jsonPay[0].quote.toString();
-        payload = payload + " #ballerina";
 
         var custMsg = trap request.getTextPayload();
         if (custMsg is string) {
             payload = payload + " " + custMsg;
         }
+
+        payload = payload + " #ballerina";
 
         twitter:Status st = checkpanic tw->tweet(payload);
         json respJson = {
